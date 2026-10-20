@@ -8,6 +8,8 @@
 
 源文件位于 `skuid-separator-extension/`，插件运行时无需 Node.js 或 npm。
 
+[阅读详细使用说明](skuid-separator-extension/README.md)：包含安装步骤、三个工具的使用示例、利润计算口径、底表格式与查询规则、更新方法和常见问题。
+
 ## 开发验证
 
 ```bash

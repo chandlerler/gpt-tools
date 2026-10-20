@@ -1,6 +1,7 @@
 const { test } = require("node:test");
 const assert = require("node:assert/strict");
 const path = require("node:path");
+const fs = require("node:fs");
 const { chromium } = require("playwright");
 
 const extension = path.resolve(__dirname, "../skuid-separator-extension");
@@ -31,9 +32,10 @@ test("SPU information matching in Chromium", async (t) => {
   const page = await browser.newPage({ viewport: { width: 1100, height: 900 } });
   const errors = [];
   page.on("pageerror", (error) => errors.push(error.message));
-  await page.evaluate((data) => {
+  await page.evaluate(({ data, bananaUrl }) => {
     window.fixture = data;
     window.chrome = {
+      runtime: { getURL: () => bananaUrl },
       storage: { local: {
         get: (_keys, callback) => callback({ "skuid-separator-base-table": data }),
         set: async () => {},
@@ -43,9 +45,44 @@ test("SPU information matching in Chromium", async (t) => {
     Object.defineProperty(navigator, "clipboard", {
       value: { writeText: async (text) => { window.copied = text; } }
     });
-  }, dataset);
+  }, {
+    data: dataset,
+    bananaUrl: `data:image/png;base64,${fs.readFileSync(path.join(extension, "icons/banana.png")).toString("base64")}`
+  });
   await page.addScriptTag({ path: path.join(extension, "xlsx-parser.js") });
   await page.addScriptTag({ path: path.join(extension, "content.js") });
+  await t.test("banana loads without a background and rotates only on hover", async () => {
+    const launcher = page.locator(".launcher");
+    const banana = page.locator(".banana-icon");
+    await banana.evaluate((image) => image.decode());
+    assert.equal(await banana.evaluate((image) => image.naturalWidth), 192);
+    assert.equal(await launcher.evaluate((node) => getComputedStyle(node).backgroundColor), "rgba(0, 0, 0, 0)");
+    assert.equal(await launcher.evaluate((node) => getComputedStyle(node).backgroundImage), "none");
+    assert.equal(await banana.evaluate((node) => getComputedStyle(node).animationName), "none");
+    await launcher.hover();
+    assert.equal(await banana.evaluate((node) => getComputedStyle(node).animationName), "banana-spin");
+    const initialTransform = await banana.evaluate((node) => getComputedStyle(node).transform);
+    await page.waitForFunction((initial) => {
+      const image = document.getElementById("skuid-separator-extension-root").shadowRoot.querySelector(".banana-icon");
+      return getComputedStyle(image).transform !== initial;
+    }, initialTransform);
+    await page.mouse.move(0, 0);
+    assert.equal(await banana.evaluate((node) => getComputedStyle(node).animationName), "none");
+    await page.emulateMedia({ reducedMotion: "reduce" });
+    await launcher.hover();
+    assert.equal(await banana.evaluate((node) => getComputedStyle(node).animationName), "none");
+    await page.emulateMedia({ reducedMotion: "no-preference" });
+  });
+  await t.test("banana remains draggable without opening the panel", async () => {
+    const bounds = await page.locator(".launcher").boundingBox();
+    await page.mouse.move(bounds.x + bounds.width / 2, bounds.y + bounds.height / 2);
+    await page.mouse.down();
+    await page.mouse.move(60, 200, { steps: 10 });
+    assert.equal(await page.locator(".banana-icon").evaluate((node) => getComputedStyle(node).animationName), "none");
+    await page.mouse.up();
+    assert.equal(await page.locator("#skuid-separator-extension-root").getAttribute("data-side"), "left");
+    assert.equal(await page.locator(".panel").isVisible(), false);
+  });
   await page.locator(".launcher").click();
   await page.locator('[data-tool="spu"]').click();
 

@@ -1,10 +1,12 @@
 # gpt-tools
 
-## SKUID 运营工具箱 1.1.6
+## SKUID 运营工具箱 1.1.7
+
+悬浮按钮使用无签名、透明背景的黄色香蕉，鼠标悬停时旋转，支持拖动。
 
 第三个功能“SPU信息匹配”支持将实际输入的 SKU 置顶，并以浅色分割线与其余 SKU 隔开。输入 SPU 时仍展示全部 SKU，无分割线。
 
-下载 `dist/skuid-separator-extension-v1.1.6.zip` 并解压，在 Chrome 的 `chrome://extensions/` 中启用开发者模式，点击“加载已解压的扩展程序”，选择包含 `manifest.json` 的目录。
+下载 `dist/skuid-separator-extension-v1.1.7.zip` 并解压，在 Chrome 的 `chrome://extensions/` 中启用开发者模式，点击“加载已解压的扩展程序”，选择包含 `manifest.json` 的目录。
 
 源文件位于 `skuid-separator-extension/`，插件运行时无需 Node.js 或 npm。
 

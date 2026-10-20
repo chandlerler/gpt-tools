@@ -1,0 +1,30 @@
+{
+  "manifest_version": 3,
+  "name": "SKUID 运营工具箱",
+  "version": "1.1.6",
+  "description": "SKUID 分隔转换、拍二发三利润计算和 SPU 信息匹配三合一运营工具。",
+  "permissions": [
+    "clipboardRead",
+    "clipboardWrite",
+    "storage",
+    "unlimitedStorage"
+  ],
+  "content_scripts": [
+    {
+      "matches": [
+        "<all_urls>"
+      ],
+      "js": [
+        "xlsx-parser.js",
+        "content.js"
+      ],
+      "run_at": "document_idle"
+    }
+  ],
+  "icons": {
+    "16": "icons/icon16.png",
+    "32": "icons/icon32.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  }
+}

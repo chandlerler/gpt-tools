@@ -1,0 +1,10 @@
+{
+  "name": "gpt-tools-extension-checks",
+  "private": true,
+  "scripts": {
+    "test": "node --test tests/spu-query.test.cjs"
+  },
+  "devDependencies": {
+    "playwright": "1.56.1"
+  }
+}

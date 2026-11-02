@@ -1,10 +1,10 @@
 # SKUID 运营工具箱使用说明
 
-适用版本：**1.1.9**
+适用版本：**1.1.10**
 
 SKUID 运营工具箱是一个 Chrome 浏览器插件，支持通过浏览器右上角扩展图标或普通网页上的香蕉悬浮按钮，随时进行 SKUID 转换、拍二发三利润计算和 SPU 信息匹配。
 
-[下载插件 ZIP](https://github.com/chandlerler/gpt-tools/raw/refs/heads/main/dist/skuid-separator-extension-v1.1.9.zip) · [查看 GitHub 仓库](https://github.com/chandlerler/gpt-tools)
+[下载插件 ZIP](https://github.com/chandlerler/gpt-tools/raw/refs/heads/main/dist/skuid-separator-extension-v1.1.10.zip) · [查看 GitHub 仓库](https://github.com/chandlerler/gpt-tools)
 
 ## 一、安装与打开
 
@@ -274,6 +274,11 @@ https://item.jd.com/10033347973969.html
 | 修改底表后查询仍是旧数据 | Excel 文件变化不会自动同步，需要重新上传 |
 
 ## 七、版本更新
+
+### 1.1.10
+
+- 浏览器工具栏、扩展列表和扩展管理页的图标统一更换为透明背景黄色香蕉。
+- 更新后在扩展管理页点击“重新加载”，即可刷新工具栏图标。
 
 ### 1.1.9
 

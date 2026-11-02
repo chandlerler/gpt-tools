@@ -28,6 +28,7 @@
     </style>
     <style>
       .spu-divider{height:0;margin:12px 0;border:0;border-top:1px solid #e2e8f0}
+      .custom-wrap #customSeparator{flex:1;min-width:30px;width:0}.group-options{display:flex;flex:0 0 auto;align-items:center;gap:4px;white-space:nowrap;color:#536176;font-size:12px}.group-options label{display:inline-flex;align-items:center;gap:4px;cursor:pointer}.group-options #groupEnabled{width:14px;height:14px;margin:0;accent-color:#2d68e8}.group-options #groupSize{width:50px;height:30px;padding:4px;font-size:12px}.group-options #groupSize:disabled{color:#9ca8b8;background:#f3f5f8}.grouped-results{display:flex;gap:10px;max-width:100%;overflow-x:auto;padding:2px 0 10px;scrollbar-width:thin;scrollbar-color:#b8c8e0 #f1f4f9}.grouped-results.hidden{display:none}.grouped-results::-webkit-scrollbar{height:8px}.grouped-results::-webkit-scrollbar-thumb{background:#b8c8e0;border-radius:8px}.grouped-results::-webkit-scrollbar-track{background:#f1f4f9}.result-group{flex:0 0 220px;min-width:0;padding:9px;border:1px solid #d4ddea;border-radius:8px;background:#f7f9fc}.group-header{display:flex;align-items:center;justify-content:space-between;gap:6px;margin-bottom:6px;color:#536176;font-size:12px}.group-copy{display:grid;place-items:center;width:26px;height:26px;padding:4px;border:0;border-radius:5px;background:transparent;color:#2d68e8;cursor:pointer}.group-copy:hover{background:#e0ebff}.group-copy:focus-visible{outline:2px solid #3f75ee;outline-offset:1px}.group-copy svg{width:16px;height:16px}.group-output{display:block;height:180px;min-height:100px;resize:vertical;font-size:12px;line-height:1.5}
     </style>
     <section class="panel hidden" aria-label="常用小工具">
       <div class="header"><h1>常用小工具</h1><button class="close" type="button" aria-label="收起">×</button></div>
@@ -43,10 +44,11 @@
         <label class="choice"><input type="radio" name="separator" value="link"><span>链接</span></label>
         <label class="choice"><input type="radio" name="separator" value="custom"><span>自定义</span></label>
       </div>
-      <div class="custom-wrap"><label for="customSeparator">自定义分隔符</label><input id="customSeparator" type="text" maxlength="20" placeholder="例如： | " disabled></div>
+      <div class="custom-wrap"><label for="customSeparator">自定义分隔符</label><input id="customSeparator" type="text" maxlength="20" placeholder="例如： | " disabled><div class="group-options"><label for="groupEnabled"><input id="groupEnabled" type="checkbox" aria-label="启用分组">每</label><input id="groupSize" type="number" min="1" step="1" value="50" inputmode="numeric" aria-label="每组 SKUID 数量" disabled><label for="groupSize">个分组</label></div></div>
       <div class="actions"><button id="readClipboard" class="button secondary" type="button">读取剪贴板</button><button id="convert" class="button primary" type="button">转换并复制</button></div>
       <div class="result-header"><label class="label" for="result">转换结果</label><button id="copyResult" class="copy" type="button">复制结果</button></div>
       <textarea id="result" readonly placeholder="转换结果会显示在这里"></textarea>
+      <div id="groupedResult" class="grouped-results hidden" role="region" aria-label="分组转换结果" tabindex="0"></div>
       <p id="note" class="note" role="status"></p>
       </div>
       <div id="profitTool" class="tool-body hidden">
@@ -96,6 +98,7 @@
   const elements = {
     panel: shadow.querySelector(".panel"), launcher: shadow.querySelector(".launcher"), close: shadow.querySelector(".close"),
     source: shadow.querySelector("#source"), result: shadow.querySelector("#result"), customSeparator: shadow.querySelector("#customSeparator"),
+    groupEnabled: shadow.querySelector("#groupEnabled"), groupSize: shadow.querySelector("#groupSize"), groupedResult: shadow.querySelector("#groupedResult"),
     readClipboard: shadow.querySelector("#readClipboard"), convert: shadow.querySelector("#convert"), copyResult: shadow.querySelector("#copyResult"),
     note: shadow.querySelector("#note"), separators: [...shadow.querySelectorAll('input[name="separator"]')],
     toolButtons: [...shadow.querySelectorAll(".tool-tab")], converterTool: shadow.querySelector("#converterTool"), profitTool: shadow.querySelector("#profitTool"),
@@ -115,7 +118,10 @@
     elements.note.className = `note ${type}`;
   };
   const saveSettings = () => {
-    chrome.storage.local.set({ [storageKey]: { separator: selectedSeparator(), customSeparator: elements.customSeparator.value } });
+    chrome.storage.local.set({ [storageKey]: {
+      separator: selectedSeparator(), customSeparator: elements.customSeparator.value,
+      groupEnabled: elements.groupEnabled.checked, groupSize: elements.groupSize.value
+    } });
   };
   const clampTop = (top) => Math.min(Math.max(top, 12), Math.max(12, window.innerHeight - 64));
   const setPosition = ({ side, top }) => {
@@ -131,11 +137,50 @@
     chrome.storage.local.set({ [positionStorageKey]: { side: root.dataset.side, top: root.getBoundingClientRect().top } });
   };
 
+  const clearConversion = () => {
+    elements.result.value = "";
+    elements.result.classList.remove("hidden");
+    elements.groupedResult.replaceChildren();
+    elements.groupedResult.classList.add("hidden");
+    elements.copyResult.textContent = "复制结果";
+  };
+
+  const renderGroups = (values, size, separator) => {
+    const groups = [];
+    for (let index = 0; index < values.length; index += size) {
+      const items = values.slice(index, index + size);
+      const groupNumber = groups.length + 1;
+      const group = document.createElement("section");
+      group.className = "result-group";
+      const header = document.createElement("div");
+      header.className = "group-header";
+      const title = document.createElement("span");
+      title.textContent = `第 ${groupNumber} 组 · ${items.length} 个`;
+      const copy = document.createElement("button");
+      copy.type = "button";
+      copy.className = "group-copy";
+      copy.title = `复制第 ${groupNumber} 组`;
+      copy.setAttribute("aria-label", copy.title);
+      copy.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><rect x="8" y="8" width="12" height="13" rx="2"/><path d="M16 8V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h3"/></svg>';
+      const output = document.createElement("textarea");
+      output.className = "group-output";
+      output.readOnly = true;
+      output.setAttribute("aria-label", `第 ${groupNumber} 组转换结果`);
+      output.value = items.join(separator);
+      copy.addEventListener("click", () => copyText(output.value));
+      header.append(title, copy);
+      group.append(header, output);
+      groups.push(group);
+    }
+    elements.groupedResult.replaceChildren(...groups);
+    elements.groupedResult.scrollLeft = 0;
+  };
+
   const convert = () => {
+    clearConversion();
     const values = elements.source.value.split(/[\s,;，；、]+/).map((item) => item.trim()).filter(Boolean);
     const selected = selectedSeparator();
     if (!values.length) {
-      elements.result.value = "";
       notify("请先输入或读取 SKUID。", "error");
       return "";
     }
@@ -143,10 +188,20 @@
       notify("请输入自定义分隔符。", "error");
       return "";
     }
+    const grouping = elements.groupEnabled.checked;
+    const groupSize = Number(elements.groupSize.value);
+    if (grouping && (!Number.isSafeInteger(groupSize) || groupSize < 1)) {
+      notify("请输入有效的分组数量（大于 0 的整数）。", "error");
+      return "";
+    }
     const outputValues = selected === "link" ? values.map((id) => `https://item.jd.com/${id}.html`) : values;
     const output = outputValues.join(delimiter());
     elements.result.value = output;
-    notify(`已识别 ${values.length} 个 SKUID。`, "success");
+    if (grouping) renderGroups(outputValues, groupSize, delimiter());
+    elements.result.classList.toggle("hidden", grouping);
+    elements.groupedResult.classList.toggle("hidden", !grouping);
+    elements.copyResult.textContent = grouping ? "复制全部" : "复制结果";
+    notify(`已识别 ${values.length} 个 SKUID。${grouping ? `已分为 ${Math.ceil(values.length / groupSize)} 组。` : ""}`, "success");
     return output;
   };
 
@@ -450,8 +505,26 @@
   });
   elements.close.addEventListener("click", () => elements.panel.classList.add("hidden"));
   elements.toolButtons.forEach((button) => button.addEventListener("click", () => switchTool(button.dataset.tool)));
-  elements.separators.forEach((input) => input.addEventListener("change", updateCustomInput));
-  elements.customSeparator.addEventListener("input", saveSettings);
+  const refreshConversion = () => {
+    if (elements.source.value.trim() || elements.result.value) convert();
+  };
+  elements.separators.forEach((input) => input.addEventListener("change", () => {
+    updateCustomInput();
+    refreshConversion();
+  }));
+  elements.customSeparator.addEventListener("input", () => {
+    saveSettings();
+    refreshConversion();
+  });
+  elements.groupEnabled.addEventListener("change", () => {
+    elements.groupSize.disabled = !elements.groupEnabled.checked;
+    saveSettings();
+    refreshConversion();
+  });
+  elements.groupSize.addEventListener("input", () => {
+    saveSettings();
+    refreshConversion();
+  });
   elements.readClipboard.addEventListener("click", async () => {
     try {
       elements.source.value = await navigator.clipboard.readText();
@@ -493,6 +566,9 @@
       const input = elements.separators.find((option) => option.value === settings.separator);
       if (input) input.checked = true;
       elements.customSeparator.value = settings.customSeparator || "";
+      elements.groupEnabled.checked = settings.groupEnabled === true;
+      elements.groupSize.value = settings.groupSize ?? "50";
+      elements.groupSize.disabled = !elements.groupEnabled.checked;
       updateCustomInput();
     }
     const position = stored[positionStorageKey];

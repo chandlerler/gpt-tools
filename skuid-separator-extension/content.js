@@ -4,6 +4,8 @@
   const calculatorStorageKey = "skuid-separator-calculator";
   const positionStorageKey = "skuid-separator-position";
   const baseTableStorageKey = "skuid-separator-base-table";
+  const floatingVisibilityKey = "skuid-separator-floating-enabled";
+  const isPopup = location.href === chrome.runtime.getURL("popup.html");
   const separatorMap = { comma: ",", space: " ", newline: "\n", link: "\n" };
 
   if (document.getElementById(rootId)) return;
@@ -12,8 +14,11 @@
   root.id = rootId;
   root.dataset.side = "right";
   root.dataset.panelDirection = "up";
-  root.style.cssText = "all:initial;position:fixed;right:24px;top:calc(100vh - 76px);z-index:2147483647";
-  document.documentElement.appendChild(root);
+  root.dataset.mode = isPopup ? "popup" : "floating";
+  root.style.cssText = isPopup
+    ? "display:block;position:relative;width:460px"
+    : "all:initial;display:none;position:fixed;right:24px;top:calc(100vh - 76px);z-index:2147483647";
+  (isPopup ? document.body : document.documentElement).appendChild(root);
   const shadow = root.attachShadow({ mode: "open" });
 
   shadow.innerHTML = `
@@ -28,10 +33,12 @@
     </style>
     <style>
       .spu-divider{height:0;margin:12px 0;border:0;border-top:1px solid #e2e8f0}
+      .floating-setting{display:inline-flex;align-items:center;gap:6px;color:#536176;font-size:12px;cursor:pointer}.floating-setting.hidden{display:none}.floating-setting input{width:15px;height:15px;margin:0;accent-color:#2d68e8}:host([data-mode="popup"]) .panel{position:static;width:460px;max-width:100%;border:0;border-radius:0;box-shadow:none}:host([data-mode="popup"]) .launcher,:host([data-mode="popup"]) .close{display:none}:host([data-mode="popup"]) .tool-body{max-height:450px}
       .custom-wrap #customSeparator{flex:1;min-width:30px;width:0}.group-options{display:flex;flex:0 0 auto;align-items:center;gap:4px;white-space:nowrap;color:#536176;font-size:12px}.group-options label{display:inline-flex;align-items:center;gap:4px;cursor:pointer}.group-options #groupEnabled{width:14px;height:14px;margin:0;accent-color:#2d68e8}.group-options #groupSize{width:50px;height:30px;padding:4px;font-size:12px}.group-options #groupSize:disabled{color:#9ca8b8;background:#f3f5f8}.grouped-results{display:flex;gap:10px;max-width:100%;overflow-x:auto;padding:2px 0 10px;scrollbar-width:thin;scrollbar-color:#b8c8e0 #f1f4f9}.grouped-results.hidden{display:none}.grouped-results::-webkit-scrollbar{height:8px}.grouped-results::-webkit-scrollbar-thumb{background:#b8c8e0;border-radius:8px}.grouped-results::-webkit-scrollbar-track{background:#f1f4f9}.result-group{flex:0 0 220px;min-width:0;padding:9px;border:1px solid #d4ddea;border-radius:8px;background:#f7f9fc}.group-header{display:flex;align-items:center;justify-content:space-between;gap:6px;margin-bottom:6px;color:#536176;font-size:12px}.group-copy{display:grid;place-items:center;width:26px;height:26px;padding:4px;border:0;border-radius:5px;background:transparent;color:#2d68e8;cursor:pointer}.group-copy:hover{background:#e0ebff}.group-copy:focus-visible{outline:2px solid #3f75ee;outline-offset:1px}.group-copy svg{width:16px;height:16px}.group-output{display:block;height:180px;min-height:100px;resize:vertical;font-size:12px;line-height:1.5}
     </style>
     <section class="panel hidden" aria-label="常用小工具">
-      <div class="header"><h1>常用小工具</h1><button class="close" type="button" aria-label="收起">×</button></div>
+      <div class="header"><h1>常用小工具</h1><label class="floating-setting hidden"><input id="floatingEnabled" type="checkbox" checked>显示悬浮窗</label><button class="close" type="button" aria-label="收起">×</button></div>
+      <p id="floatingSettingError" class="note error hidden" role="status"></p>
     <div class="tool-switcher" role="tablist" aria-label="工具选择"><button class="tool-tab active" type="button" data-tool="converter" role="tab" aria-selected="true">SKUID 转换</button><button class="tool-tab" type="button" data-tool="profit" role="tab" aria-selected="false">拍二发三计算</button><button class="tool-tab" type="button" data-tool="spu" role="tab" aria-selected="false">SPU信息匹配</button></div>
       <div id="converterTool" class="tool-body">
       <label class="label" for="source">输入 SKUID（支持空格、换行、逗号、分号混合）</label>
@@ -97,6 +104,7 @@
 
   const elements = {
     panel: shadow.querySelector(".panel"), launcher: shadow.querySelector(".launcher"), close: shadow.querySelector(".close"),
+    floatingSetting: shadow.querySelector(".floating-setting"), floatingEnabled: shadow.querySelector("#floatingEnabled"), floatingSettingError: shadow.querySelector("#floatingSettingError"),
     source: shadow.querySelector("#source"), result: shadow.querySelector("#result"), customSeparator: shadow.querySelector("#customSeparator"),
     groupEnabled: shadow.querySelector("#groupEnabled"), groupSize: shadow.querySelector("#groupSize"), groupedResult: shadow.querySelector("#groupedResult"),
     readClipboard: shadow.querySelector("#readClipboard"), convert: shadow.querySelector("#convert"), copyResult: shadow.querySelector("#copyResult"),
@@ -125,6 +133,7 @@
   };
   const clampTop = (top) => Math.min(Math.max(top, 12), Math.max(12, window.innerHeight - 64));
   const setPosition = ({ side, top }) => {
+    if (isPopup) return;
     const clampedTop = clampTop(top);
     root.dataset.side = side;
     root.dataset.panelDirection = clampedTop < window.innerHeight / 2 ? "down" : "up";
@@ -560,7 +569,47 @@
     setPosition({ side: root.dataset.side, top: root.getBoundingClientRect().top });
   });
 
-  chrome.storage.local.get([storageKey, calculatorStorageKey, positionStorageKey, baseTableStorageKey], (stored) => {
+  let floatingEnabled = true;
+  const applyFloatingVisibility = (value) => {
+    floatingEnabled = value !== false;
+    elements.floatingEnabled.checked = floatingEnabled;
+    if (!isPopup) {
+      root.style.display = floatingEnabled ? "block" : "none";
+      if (!floatingEnabled) elements.panel.classList.add("hidden");
+    }
+  };
+  if (isPopup) {
+    elements.panel.classList.remove("hidden");
+    elements.floatingSetting.classList.remove("hidden");
+  }
+  elements.floatingEnabled.addEventListener("change", async () => {
+    const enabled = elements.floatingEnabled.checked;
+    elements.floatingEnabled.disabled = true;
+    elements.floatingSettingError.classList.add("hidden");
+    try {
+      await chrome.storage.local.set({ [floatingVisibilityKey]: enabled });
+      applyFloatingVisibility(enabled);
+    } catch {
+      elements.floatingEnabled.checked = floatingEnabled;
+      elements.floatingSettingError.textContent = "悬浮窗设置保存失败，请重试。";
+      elements.floatingSettingError.classList.remove("hidden");
+    } finally {
+      elements.floatingEnabled.disabled = false;
+    }
+  });
+  chrome.storage.onChanged.addListener((changes, area) => {
+    if (area !== "local") return;
+    if (changes[floatingVisibilityKey]) applyFloatingVisibility(changes[floatingVisibilityKey].newValue);
+    if (changes[baseTableStorageKey]) {
+      baseTableData = changes[baseTableStorageKey].newValue || null;
+      showBaseTable(baseTableData);
+      resetSpuResult();
+      elements.spuBatchResult.classList.add("hidden");
+      elements.spuBatchLinks.replaceChildren();
+    }
+  });
+  chrome.storage.local.get([storageKey, calculatorStorageKey, positionStorageKey, baseTableStorageKey, floatingVisibilityKey], (stored) => {
+    applyFloatingVisibility(stored[floatingVisibilityKey]);
     const settings = stored[storageKey];
     if (settings) {
       const input = elements.separators.find((option) => option.value === settings.separator);

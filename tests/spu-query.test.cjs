@@ -36,7 +36,7 @@ test("SPU information matching in Chromium", async (t) => {
     window.fixture = data;
     window.chrome = {
       runtime: { getURL: () => bananaUrl },
-      storage: { local: {
+      storage: { onChanged: { addListener: () => {} }, local: {
         get: (_keys, callback) => callback({ "skuid-separator-base-table": data }),
         set: async () => {},
         remove: async () => {}

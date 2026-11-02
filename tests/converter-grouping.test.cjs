@@ -23,7 +23,7 @@ test("optional converter grouping in Chromium", async (t) => {
       window.writes = [];
       window.chrome = {
         runtime: { getURL: () => bananaUrl },
-        storage: { local: {
+        storage: { onChanged: { addListener: () => {} }, local: {
           get: (_keys, callback) => callback(window.saved),
           set: async (values) => Object.assign(window.saved, values)
         } }

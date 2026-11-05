@@ -1,20 +1,22 @@
 # gpt-tools
 
-## SKUID 运营工具箱 1.1.10
+## SKUID 运营工具箱 1.1.11
 
 点击浏览器右上角扩展图标即可使用全部工具；弹出面板右上角的“显示悬浮窗”开关可统一隐藏或恢复网页中的香蕉按钮，设置自动保存。
+
+新增好评率计算：按当前评价数、好评数或当前好评率，以及目标好评率，反推最少需要新增的好评数。四个入口以 2×2 排列：第一行 SKUID 转换 / SPU信息匹配，第二行拍二发三计算 / 好评率计算。
 
 SKUID 转换支持可选的“每 N 个分组”：结果横向分列，每列可独立复制，列多时显示横向滚动条。
 
 悬浮按钮使用无签名、透明背景的黄色香蕉，鼠标悬停时旋转，支持拖动。
 
-第三个功能“SPU信息匹配”支持将实际输入的 SKU 置顶，并以浅色分割线与其余 SKU 隔开。输入 SPU 时仍展示全部 SKU，无分割线。
+“SPU信息匹配”支持将实际输入的 SKU 置顶，并以浅色分割线与其余 SKU 隔开。输入 SPU 时仍展示全部 SKU，无分割线。
 
-下载 `dist/skuid-separator-extension-v1.1.10.zip` 并解压，在 Chrome 的 `chrome://extensions/` 中启用开发者模式，点击“加载已解压的扩展程序”，选择包含 `manifest.json` 的目录。
+下载 `dist/skuid-separator-extension-v1.1.11.zip` 并解压，在 Chrome 的 `chrome://extensions/` 中启用开发者模式，点击“加载已解压的扩展程序”，选择包含 `manifest.json` 的目录。
 
 源文件位于 `skuid-separator-extension/`，插件运行时无需 Node.js 或 npm。
 
-[阅读详细使用说明](skuid-separator-extension/README.md)：包含安装步骤、三个工具的使用示例、利润计算口径、底表格式与查询规则、更新方法和常见问题。
+[阅读详细使用说明](skuid-separator-extension/README.md)：包含安装步骤、四个工具的使用示例、利润计算口径、底表格式与查询规则、更新方法和常见问题。
 
 ## 开发验证
 

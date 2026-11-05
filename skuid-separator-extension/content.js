@@ -2,6 +2,7 @@
   const rootId = "skuid-separator-extension-root";
   const storageKey = "skuid-separator-settings";
   const calculatorStorageKey = "skuid-separator-calculator";
+  const ratingStorageKey = "skuid-separator-rating";
   const positionStorageKey = "skuid-separator-position";
   const baseTableStorageKey = "skuid-separator-base-table";
   const floatingVisibilityKey = "skuid-separator-floating-enabled";
@@ -29,17 +30,17 @@
       .upload-row{display:flex;gap:8px;align-items:center}.upload-row input{width:310px;height:32px;padding:4px 6px;font-size:12px}.upload-row button{height:32px;flex:0 0 auto}.spu-query{display:grid;gap:8px;margin-top:11px}.spu-query .calc-field input{margin-top:0}.spu-query .button{height:34px}.spu-result{margin-top:13px;padding:10px;border:1px solid #c9d8ef;border-radius:10px;background:#fbfcff}.link-list{display:grid;gap:6px;margin-top:2px}.link-list a{display:block;min-width:0;padding:7px 8px;border:1px solid #d8e3f3;border-radius:8px;background:#f5f8ff;color:#245bd1;font-size:11px;text-decoration:none;word-break:break-all}.link-list a:hover{background:#edf3ff;text-decoration:underline}.spu-title-row{display:flex;align-items:center;gap:8px;font-size:13px}.result-label{color:#536176;font-weight:600}.spu-link{color:#2d68e8;font-weight:600;text-decoration:none;word-break:break-all}.spu-link:hover{text-decoration:underline}.spu-info{margin:10px 0;color:#536176;font-size:12px}.spu-info strong{display:block;margin-top:2px;color:#1d2638;font-size:13px}.spu-row{display:flex;flex-wrap:nowrap;align-items:center;gap:6px;overflow:hidden;padding:7px 9px;border:1px solid #d8e3f3;border-radius:8px;background:#f5f8ff;margin-top:8px;font-size:11px;line-height:1.35;color:#1d2638;white-space:nowrap}.spu-row .row-title{flex:0 1 auto;min-width:0;color:#5c6b82;font-variant-numeric:tabular-nums}.spu-row .metric{display:inline-flex;flex:0 0 auto;align-items:center;gap:3px;color:#1d2638;font-variant-numeric:tabular-nums}.spu-row .metric i{font-style:normal;color:#68778d}.spu-row+.spu-row{margin-top:7px}
     </style>
     <style>
-      .tool-switcher{display:flex;gap:6px;margin:0 0 12px;padding:4px;border-radius:9px;background:#f1f4f9}.tool-tab{flex:1;height:30px;padding:0 6px;border:0;border-radius:6px;cursor:pointer;color:#607087;background:transparent;font:600 12px -apple-system,BlinkMacSystemFont,"Segoe UI","Microsoft YaHei",sans-serif}.tool-tab.active{color:#245bd1;background:#fff;box-shadow:0 1px 3px rgba(34,47,80,.12)}.calc-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}.calc-field{display:block;color:#536176;font-size:12px;font-weight:600}.calc-field input{height:34px;margin-top:5px;padding:7px 8px;font-size:13px}.calc-button{width:100%;margin-top:14px}.profit-list{display:grid;gap:8px;margin-top:13px}.profit-card{padding:10px;border-radius:9px;background:#f5f8ff}.profit-card span{display:block;color:#5c6b82;font-size:12px}.profit-card strong{display:block;margin-top:3px;color:#245bd1;font-size:21px;line-height:1.2}.calc-formula{margin:9px 0 0;color:#748196;font-size:11px;line-height:1.5}.calc-note{min-height:17px;margin:7px 0 0;color:#c03d42;font-size:11px}.tool-body{max-height:calc(100vh - 180px);overflow-y:auto;overflow-x:hidden;padding-right:2px;scrollbar-width:thin;scrollbar-color:#c6d2e4 transparent}.tool-body::-webkit-scrollbar{width:7px}.tool-body::-webkit-scrollbar-thumb{background:#c6d2e4;border-radius:999px}.tool-body::-webkit-scrollbar-thumb:hover{background:#aebdd4}.tool-body::-webkit-scrollbar-track{background:transparent}
+      .tool-switcher{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px;margin:0 0 12px;padding:4px;border-radius:9px;background:#f1f4f9}.tool-tab{flex:1;height:30px;padding:0 6px;border:0;border-radius:6px;cursor:pointer;color:#607087;background:transparent;font:600 12px -apple-system,BlinkMacSystemFont,"Segoe UI","Microsoft YaHei",sans-serif}.tool-tab.active{color:#245bd1;background:#fff;box-shadow:0 1px 3px rgba(34,47,80,.12)}.calc-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}.calc-field{display:block;color:#536176;font-size:12px;font-weight:600}.calc-field input{height:34px;margin-top:5px;padding:7px 8px;font-size:13px}.calc-button{width:100%;margin-top:14px}.profit-list{display:grid;gap:8px;margin-top:13px}.profit-card{padding:10px;border-radius:9px;background:#f5f8ff}.profit-card span{display:block;color:#5c6b82;font-size:12px}.profit-card strong{display:block;margin-top:3px;color:#245bd1;font-size:21px;line-height:1.2}.calc-formula{margin:9px 0 0;color:#748196;font-size:11px;line-height:1.5}.calc-note{min-height:17px;margin:7px 0 0;color:#c03d42;font-size:11px}.tool-body{max-height:var(--floating-tool-height,calc(100vh - 216px));overflow-y:auto;overflow-x:hidden;padding-right:2px;scrollbar-width:thin;scrollbar-color:#c6d2e4 transparent}.tool-body::-webkit-scrollbar{width:7px}.tool-body::-webkit-scrollbar-thumb{background:#c6d2e4;border-radius:999px}.tool-body::-webkit-scrollbar-thumb:hover{background:#aebdd4}.tool-body::-webkit-scrollbar-track{background:transparent}
     </style>
     <style>
-      .spu-divider{height:0;margin:12px 0;border:0;border-top:1px solid #e2e8f0}
-      .floating-setting{display:inline-flex;align-items:center;gap:6px;color:#536176;font-size:12px;cursor:pointer}.floating-setting.hidden{display:none}.floating-setting input{width:15px;height:15px;margin:0;accent-color:#2d68e8}:host([data-mode="popup"]) .panel{position:static;width:460px;max-width:100%;border:0;border-radius:0;box-shadow:none}:host([data-mode="popup"]) .launcher,:host([data-mode="popup"]) .close{display:none}:host([data-mode="popup"]) .tool-body{max-height:450px}
+      .rating-details{display:grid;grid-template-columns:1fr auto;gap:8px;font-size:12px;color:#536176}.rating-details b{color:#245bd1;overflow-wrap:anywhere;max-width:200px}.profit-list.hidden{display:none}#ratingAdditional{overflow-wrap:anywhere}.spu-divider{height:0;margin:12px 0;border:0;border-top:1px solid #e2e8f0}
+      .floating-setting{display:inline-flex;align-items:center;gap:6px;color:#536176;font-size:12px;cursor:pointer}.floating-setting.hidden{display:none}.floating-setting input{width:15px;height:15px;margin:0;accent-color:#2d68e8}:host([data-mode="popup"]) .panel{position:static;width:460px;max-width:100%;border:0;border-radius:0;box-shadow:none}:host([data-mode="popup"]) .launcher,:host([data-mode="popup"]) .close{display:none}:host([data-mode="popup"]) .tool-body{max-height:414px}
       .custom-wrap #customSeparator{flex:1;min-width:30px;width:0}.group-options{display:flex;flex:0 0 auto;align-items:center;gap:4px;white-space:nowrap;color:#536176;font-size:12px}.group-options label{display:inline-flex;align-items:center;gap:4px;cursor:pointer}.group-options #groupEnabled{width:14px;height:14px;margin:0;accent-color:#2d68e8}.group-options #groupSize{width:50px;height:30px;padding:4px;font-size:12px}.group-options #groupSize:disabled{color:#9ca8b8;background:#f3f5f8}.grouped-results{display:flex;gap:10px;max-width:100%;overflow-x:auto;padding:2px 0 10px;scrollbar-width:thin;scrollbar-color:#b8c8e0 #f1f4f9}.grouped-results.hidden{display:none}.grouped-results::-webkit-scrollbar{height:8px}.grouped-results::-webkit-scrollbar-thumb{background:#b8c8e0;border-radius:8px}.grouped-results::-webkit-scrollbar-track{background:#f1f4f9}.result-group{flex:0 0 220px;min-width:0;padding:9px;border:1px solid #d4ddea;border-radius:8px;background:#f7f9fc}.group-header{display:flex;align-items:center;justify-content:space-between;gap:6px;margin-bottom:6px;color:#536176;font-size:12px}.group-copy{display:grid;place-items:center;width:26px;height:26px;padding:4px;border:0;border-radius:5px;background:transparent;color:#2d68e8;cursor:pointer}.group-copy:hover{background:#e0ebff}.group-copy:focus-visible{outline:2px solid #3f75ee;outline-offset:1px}.group-copy svg{width:16px;height:16px}.group-output{display:block;height:180px;min-height:100px;resize:vertical;font-size:12px;line-height:1.5}
     </style>
     <section class="panel hidden" aria-label="常用小工具">
       <div class="header"><h1>常用小工具</h1><label class="floating-setting hidden"><input id="floatingEnabled" type="checkbox" checked>显示悬浮窗</label><button class="close" type="button" aria-label="收起">×</button></div>
       <p id="floatingSettingError" class="note error hidden" role="status"></p>
-    <div class="tool-switcher" role="tablist" aria-label="工具选择"><button class="tool-tab active" type="button" data-tool="converter" role="tab" aria-selected="true">SKUID 转换</button><button class="tool-tab" type="button" data-tool="profit" role="tab" aria-selected="false">拍二发三计算</button><button class="tool-tab" type="button" data-tool="spu" role="tab" aria-selected="false">SPU信息匹配</button></div>
+    <div class="tool-switcher" role="tablist" aria-label="工具选择"><button class="tool-tab active" type="button" data-tool="converter" role="tab" aria-selected="true">SKUID 转换</button><button class="tool-tab" type="button" data-tool="spu" role="tab" aria-selected="false">SPU信息匹配</button><button class="tool-tab" type="button" data-tool="profit" role="tab" aria-selected="false">拍二发三计算</button><button class="tool-tab" type="button" data-tool="rating" role="tab" aria-selected="false">好评率计算</button></div>
       <div id="converterTool" class="tool-body">
       <label class="label" for="source">输入 SKUID（支持空格、换行、逗号、分号混合）</label>
       <textarea id="source" placeholder="例如：10031208685973 10031208358356；10033347973969"></textarea>
@@ -73,6 +74,23 @@
         </div>
 
         <p id="calcNote" class="calc-note" role="status"></p>
+      </div>
+      <div id="ratingTool" class="tool-body hidden">
+        <div class="calc-grid">
+          <label class="calc-field" for="ratingTotal">当前评价数<input id="ratingTotal" type="number" min="0" step="1" inputmode="numeric" placeholder="例如：1000"></label>
+          <label class="calc-field" for="ratingPositive">好评数（可选）<input id="ratingPositive" type="number" min="0" step="1" inputmode="numeric" placeholder="例如：950"></label>
+          <label class="calc-field" for="ratingCurrent">当前好评率 (%)<input id="ratingCurrent" type="number" min="0" max="100" step="any" inputmode="decimal" placeholder="可选，例如：95"></label>
+          <label class="calc-field" for="ratingTarget">目标好评率 (%)<input id="ratingTarget" type="number" min="0" max="100" step="any" inputmode="decimal" placeholder="例如：98"></label>
+        </div>
+        <p class="calc-formula">好评数与当前好评率至少填一项；同时填写时，以好评数为准。百分比填 95 表示 95%。</p>
+        <button id="calculateRating" class="button primary calc-button" type="button">计算需要新增的好评数</button>
+        <div id="ratingResult" class="profit-list hidden" aria-live="polite">
+          <div class="profit-card"><span id="ratingResultLabel">最少需要新增</span><strong id="ratingAdditional">--</strong></div>
+          <div class="rating-details"><span>计算采用的当前好评率</span><b id="ratingActual">--</b><span>新增后评价总数</span><b id="ratingNewTotal">--</b><span>新增后好评率</span><b id="ratingAfter">--</b></div>
+          <p id="ratingExplanation" class="calc-formula"></p>
+        </div>
+        <p id="ratingNote" class="calc-note" role="status"></p>
+        <p class="calc-formula">按新增评价全部为好评、原有评价不变计算。结果向上取整；百分比展示最多保留 4 位小数，判定是否达标使用未舍入数值。</p>
       </div>
       <div id="spuTool" class="tool-body hidden">
         <label class="label" for="baseTableInput">上传商品底表（.xlsx）</label>
@@ -111,6 +129,8 @@
     note: shadow.querySelector("#note"), separators: [...shadow.querySelectorAll('input[name="separator"]')],
     toolButtons: [...shadow.querySelectorAll(".tool-tab")], converterTool: shadow.querySelector("#converterTool"), profitTool: shadow.querySelector("#profitTool"),
     spuTool: shadow.querySelector("#spuTool"),
+    ratingTool: shadow.querySelector("#ratingTool"), ratingTotal: shadow.querySelector("#ratingTotal"), ratingPositive: shadow.querySelector("#ratingPositive"), ratingCurrent: shadow.querySelector("#ratingCurrent"), ratingTarget: shadow.querySelector("#ratingTarget"),
+    calculateRating: shadow.querySelector("#calculateRating"), ratingResult: shadow.querySelector("#ratingResult"), ratingResultLabel: shadow.querySelector("#ratingResultLabel"), ratingAdditional: shadow.querySelector("#ratingAdditional"), ratingActual: shadow.querySelector("#ratingActual"), ratingNewTotal: shadow.querySelector("#ratingNewTotal"), ratingAfter: shadow.querySelector("#ratingAfter"), ratingExplanation: shadow.querySelector("#ratingExplanation"), ratingNote: shadow.querySelector("#ratingNote"),
     purchasePrice: shadow.querySelector("#purchasePrice"), logisticsCost: shadow.querySelector("#logisticsCost"), cpsRate: shadow.querySelector("#cpsRate"), salePrice: shadow.querySelector("#salePrice"), mergeRate: shadow.querySelector("#mergeRate"),
     calculateProfit: shadow.querySelector("#calculateProfit"), singleOrderProfit: shadow.querySelector("#singleOrderProfit"), mergedProfit: shadow.querySelector("#mergedProfit"), calcNote: shadow.querySelector("#calcNote"),
     baseTableInput: shadow.querySelector("#baseTableInput"), clearBaseTable: shadow.querySelector("#clearBaseTable"), baseTableStatus: shadow.querySelector("#baseTableStatus"),
@@ -132,6 +152,16 @@
     } });
   };
   const clampTop = (top) => Math.min(Math.max(top, 12), Math.max(12, window.innerHeight - 64));
+  const fitFloatingPanel = () => {
+    if (isPopup || elements.panel.classList.contains("hidden")) return;
+    const tool = shadow.querySelector(".tool-body:not(.hidden)");
+    const rootBounds = root.getBoundingClientRect();
+    const available = root.dataset.panelDirection === "down"
+      ? window.innerHeight - rootBounds.top - 64 - 12
+      : rootBounds.bottom - 64 - 12;
+    const overhead = elements.panel.getBoundingClientRect().height - tool.getBoundingClientRect().height;
+    root.style.setProperty("--floating-tool-height", `${Math.max(60, available - overhead)}px`);
+  };
   const setPosition = ({ side, top }) => {
     if (isPopup) return;
     const clampedTop = clampTop(top);
@@ -141,6 +171,7 @@
     root.style.bottom = "auto";
     root.style.left = side === "left" ? "24px" : "auto";
     root.style.right = side === "right" ? "24px" : "auto";
+    fitFloatingPanel();
   };
   const savePosition = () => {
     chrome.storage.local.set({ [positionStorageKey]: { side: root.dataset.side, top: root.getBoundingClientRect().top } });
@@ -241,6 +272,33 @@
     elements.singleOrderProfit.textContent = `¥${singleOrderProfit.toFixed(2)}`;
     elements.mergedProfit.textContent = `¥${mergedProfit.toFixed(2)}`;
     elements.calcNote.textContent = "";
+  };
+
+  const ratingInputs = () => ({
+    total: elements.ratingTotal.value, positive: elements.ratingPositive.value,
+    currentRate: elements.ratingCurrent.value, targetRate: elements.ratingTarget.value
+  });
+  const calculateRating = () => {
+    elements.ratingResult.classList.add("hidden");
+    elements.ratingNote.textContent = "";
+    try {
+      const result = window.SkuidRating.calculate(ratingInputs());
+      elements.ratingResultLabel.textContent = result.estimated ? "预计最少需要新增" : "最少需要新增";
+      elements.ratingAdditional.textContent = result.status === "unreachable" ? "无法达到 100%" : `${result.additional} 个好评`;
+      elements.ratingActual.textContent = result.current;
+      elements.ratingNewTotal.textContent = result.status === "unreachable" ? "--" : result.total;
+      elements.ratingAfter.textContent = result.after || "--";
+      const notes = [];
+      if (result.estimated) notes.push("仅按输入好评率估算；平台显示值可能经过四舍五入，填写准确好评数可得到精确结果。");
+      if (result.usedPositive) notes.push("已按好评数计算，输入的当前好评率仅作参考。");
+      if (result.status === "unreachable") notes.push("已有非好评时，有限数量的新增好评只能无限接近 100%，无法达到严格的 100%。");
+      else if (result.additional === "0") notes.push("当前已满足目标，无需新增好评。");
+      else notes.push("以上是达到目标所需的最少新增好评数。");
+      elements.ratingExplanation.textContent = notes.join(" ");
+      elements.ratingResult.classList.remove("hidden");
+    } catch (error) {
+      elements.ratingNote.textContent = error.message;
+    }
   };
 
   const saveCalculatorInputs = () => {
@@ -433,11 +491,13 @@
     elements.converterTool.classList.toggle("hidden", tool !== "converter");
     elements.profitTool.classList.toggle("hidden", tool !== "profit");
     elements.spuTool.classList.toggle("hidden", tool !== "spu");
+    elements.ratingTool.classList.toggle("hidden", tool !== "rating");
     elements.toolButtons.forEach((button) => {
       const isActive = button.dataset.tool === tool;
       button.classList.toggle("active", isActive);
       button.setAttribute("aria-selected", String(isActive));
     });
+    fitFloatingPanel();
   };
 
   const copySkuIds = () => copyText(lastSkuIds.filter(Boolean).join("\n"), {
@@ -510,7 +570,9 @@
       return;
     }
     elements.panel.classList.remove("hidden");
-    (elements.spuTool.classList.contains("hidden") ? (elements.converterTool.classList.contains("hidden") ? elements.purchasePrice : elements.source) : elements.spuQueryInput).focus();
+    fitFloatingPanel();
+    const activeTool = elements.toolButtons.find((button) => button.classList.contains("active"))?.dataset.tool;
+    ({ converter: elements.source, profit: elements.purchasePrice, spu: elements.spuQueryInput, rating: elements.ratingTotal }[activeTool] || elements.source).focus();
   });
   elements.close.addEventListener("click", () => elements.panel.classList.add("hidden"));
   elements.toolButtons.forEach((button) => button.addEventListener("click", () => switchTool(button.dataset.tool)));
@@ -548,6 +610,17 @@
   });
   elements.copyResult.addEventListener("click", () => copyText(elements.result.value));
   elements.calculateProfit.addEventListener("click", calculateProfit);
+  elements.calculateRating.addEventListener("click", calculateRating);
+  [elements.ratingTotal, elements.ratingPositive, elements.ratingCurrent, elements.ratingTarget].forEach((input) => {
+    input.addEventListener("input", () => {
+      elements.ratingResult.classList.add("hidden");
+      elements.ratingNote.textContent = "";
+      chrome.storage.local.set({ [ratingStorageKey]: ratingInputs() });
+    });
+    input.addEventListener("keydown", (event) => {
+      if (event.key === "Enter") calculateRating();
+    });
+  });
   [elements.purchasePrice, elements.logisticsCost, elements.cpsRate, elements.salePrice, elements.mergeRate].forEach((input) => {
     input.addEventListener("input", saveCalculatorInputs);
     input.addEventListener("change", saveCalculatorInputs);
@@ -608,7 +681,7 @@
       elements.spuBatchLinks.replaceChildren();
     }
   });
-  chrome.storage.local.get([storageKey, calculatorStorageKey, positionStorageKey, baseTableStorageKey, floatingVisibilityKey], (stored) => {
+  chrome.storage.local.get([storageKey, calculatorStorageKey, ratingStorageKey, positionStorageKey, baseTableStorageKey, floatingVisibilityKey], (stored) => {
     applyFloatingVisibility(stored[floatingVisibilityKey]);
     const settings = stored[storageKey];
     if (settings) {
@@ -623,6 +696,13 @@
     const position = stored[positionStorageKey];
     if (position && (position.side === "left" || position.side === "right") && Number.isFinite(position.top)) {
       setPosition(position);
+    }
+    const ratingSettings = stored[ratingStorageKey];
+    if (ratingSettings) {
+      elements.ratingTotal.value = ratingSettings.total ?? "";
+      elements.ratingPositive.value = ratingSettings.positive ?? "";
+      elements.ratingCurrent.value = ratingSettings.currentRate ?? "";
+      elements.ratingTarget.value = ratingSettings.targetRate ?? "";
     }
     const calculatorSettings = stored[calculatorStorageKey];
     if (calculatorSettings) {

@@ -11,12 +11,12 @@ const visibilityKey = "skuid-separator-floating-enabled";
 test("toolbar popup and shared floating visibility", async (t) => {
   const manifest = JSON.parse(fs.readFileSync(path.join(extension, "manifest.json")));
   assert.equal(manifest.action.default_popup, "popup.html");
-  const files = new Set(["popup.html", "popup.css", "content.js", "xlsx-parser.js", "icons/banana.png"]);
+  const files = new Set(["popup.html", "popup.css", "content.js", "rating-calculator.js", "xlsx-parser.js", "icons/banana.png"]);
   const server = http.createServer((req, res) => {
     const name = req.url.slice(1);
     if (name === "page.html") {
       res.setHeader("Content-Type", "text/html; charset=utf-8");
-      res.end('<!doctype html><body>Test web page<script src="xlsx-parser.js"></script><script src="content.js"></script></body>');
+      res.end('<!doctype html><body>Test web page<script src="xlsx-parser.js"></script><script src="rating-calculator.js"></script><script src="content.js"></script></body>');
     } else if (files.has(name)) {
       const type = { ".html": "text/html", ".css": "text/css", ".js": "application/javascript", ".png": "image/png" }[path.extname(name)];
       res.setHeader("Content-Type", type);
@@ -132,6 +132,61 @@ test("toolbar popup and shared floating visibility", async (t) => {
     await popup.locator("#clearBaseTable").click();
     await web.locator("#spuResult").waitFor({ state: "hidden" });
     assert.equal(await web.locator("#baseTableStatus").textContent(), "未上传底表");
+  });
+  await t.test("four tabs use the requested 2 by 2 layout in both entry points", async () => {
+    for (const page of [popup, web]) {
+      assert.deepEqual(await page.locator(".tool-tab").evaluateAll((nodes) => nodes.map((node) => node.dataset.tool)), ["converter", "spu", "profit", "rating"]);
+      const boxes = await page.locator(".tool-tab").evaluateAll((nodes) => nodes.map((node) => {
+        const { x, y } = node.getBoundingClientRect(); return { x, y };
+      }));
+      assert.equal(boxes[0].y, boxes[1].y);
+      assert.equal(boxes[2].y, boxes[3].y);
+      assert.equal(boxes[0].x, boxes[2].x);
+      assert.equal(boxes[1].x, boxes[3].x);
+      assert.ok(boxes[2].y > boxes[0].y);
+    }
+  });
+  await t.test("rating UI calculates, validates, estimates and restores saved inputs", async () => {
+    await popup.locator('[data-tool="rating"]').click();
+    for (const [id, value] of Object.entries({ ratingTotal: "1000", ratingPositive: "950", ratingCurrent: "95", ratingTarget: "98" })) await popup.locator(`#${id}`).fill(value);
+    await popup.locator("#ratingTarget").press("Enter");
+    assert.equal(await popup.locator("#ratingAdditional").textContent(), "1500 个好评");
+    assert.equal(await popup.locator("#ratingNewTotal").textContent(), "2500");
+    assert.equal(await popup.locator("#ratingAfter").textContent(), "98%");
+    assert.equal(await popup.locator("#ratingResult").isVisible(), true);
+    assert.equal(await popup.locator("#spuTool").isVisible(), false);
+    if (process.env.RATING_SCREENSHOT) await popup.screenshot({ path: process.env.RATING_SCREENSHOT });
+    assert.ok(await popup.locator(".panel").evaluate((node) => node.getBoundingClientRect().bottom <= 580));
+    await popup.locator("#ratingCurrent").fill("94");
+    assert.equal(await popup.locator("#ratingResult").isVisible(), false);
+    await popup.locator("#calculateRating").click();
+    assert.equal(await popup.locator("#ratingActual").textContent(), "95%");
+    assert.match(await popup.locator("#ratingExplanation").textContent(), /好评数计算/);
+    await popup.locator("#ratingPositive").fill("");
+    await popup.locator("#calculateRating").click();
+    assert.equal(await popup.locator("#ratingAdditional").textContent(), "2000 个好评");
+    assert.match(await popup.locator("#ratingExplanation").textContent(), /估算/);
+    await popup.locator("#ratingTarget").fill("100");
+    await popup.locator("#calculateRating").click();
+    assert.match(await popup.locator("#ratingAdditional").textContent(), /无法达到/);
+    await popup.locator("#ratingPositive").fill("1001");
+    await popup.locator("#calculateRating").click();
+    assert.equal(await popup.locator("#ratingResult").isVisible(), false);
+    assert.match(await popup.locator("#ratingNote").textContent(), /不能大于/);
+    await popup.locator("#ratingPositive").fill("950");
+    await popup.locator("#ratingTarget").fill("98");
+    await popup.close();
+    popup = await open("popup.html", true);
+    await popup.waitForFunction(() => document.getElementById("skuid-separator-extension-root").shadowRoot.querySelector("#ratingTotal").value === "1000");
+    await popup.locator('[data-tool="rating"]').click();
+    assert.equal(await popup.locator("#ratingPositive").inputValue(), "950");
+    assert.equal(await popup.locator("#ratingTarget").inputValue(), "98");
+    await popup.locator("#calculateRating").click();
+    assert.equal(await popup.locator("#ratingAdditional").textContent(), "1500 个好评");
+    await web.locator('[data-tool="rating"]').click();
+    await web.locator(".close").click();
+    await web.locator(".launcher").click();
+    assert.equal(await web.locator("#ratingTotal").evaluate((node) => node.getRootNode().activeElement === node), true);
   });
   await t.test("a failed toggle save reports an error and preserves visibility", async () => {
     failWrites = true;

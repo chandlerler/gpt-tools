@@ -50,6 +50,7 @@ test("SPU information matching in Chromium", async (t) => {
     bananaUrl: `data:image/png;base64,${fs.readFileSync(path.join(extension, "icons/banana.png")).toString("base64")}`
   });
   await page.addScriptTag({ path: path.join(extension, "xlsx-parser.js") });
+  await page.addScriptTag({ path: path.join(extension, "rating-calculator.js") });
   await page.addScriptTag({ path: path.join(extension, "content.js") });
   await t.test("banana loads without a background and rotates only on hover", async () => {
     const launcher = page.locator(".launcher");

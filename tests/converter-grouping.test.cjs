@@ -35,6 +35,7 @@ test("optional converter grouping in Chromium", async (t) => {
         }
       });
     }, { settings, bananaUrl: `data:image/png;base64,${fs.readFileSync(path.join(extension, "icons/banana.png")).toString("base64")}` });
+    await page.addScriptTag({ path: path.join(extension, "rating-calculator.js") });
     await page.addScriptTag({ path: path.join(extension, "content.js") });
     await page.locator(".launcher").click();
     return page;

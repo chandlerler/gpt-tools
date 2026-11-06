@@ -161,7 +161,7 @@ test("toolbar popup and shared floating visibility", async (t) => {
     assert.equal(await popup.locator("#ratingResult").isVisible(), false);
     await popup.locator("#calculateRating").click();
     assert.equal(await popup.locator("#ratingActual").textContent(), "95%");
-    assert.match(await popup.locator("#ratingExplanation").textContent(), /好评数计算/);
+    assert.match(await popup.locator("#ratingExplanation").textContent(), /好评数和当前评价数计算/);
     await popup.locator("#ratingPositive").fill("");
     await popup.locator("#calculateRating").click();
     assert.equal(await popup.locator("#ratingAdditional").textContent(), "2000 个好评");
@@ -187,6 +187,57 @@ test("toolbar popup and shared floating visibility", async (t) => {
     await web.locator(".close").click();
     await web.locator(".launcher").click();
     assert.equal(await web.locator("#ratingTotal").evaluate((node) => node.getRootNode().activeElement === node), true);
+  });
+  await t.test("rating supports every pair and switches between adding and deleting", async () => {
+    await popup.locator('[data-tool="rating"]').click();
+    async function fill(total, positive, rate, target = "98") {
+      for (const [id, value] of Object.entries({ ratingTotal: total, ratingPositive: positive, ratingCurrent: rate, ratingTarget: target })) await popup.locator(`#${id}`).fill(value);
+    }
+    for (const pair of [["1000", "950", ""], ["1000", "", "95"], ["", "950", "95"]]) {
+      await fill(...pair);
+      await popup.locator("#calculateRatingDelete").click();
+      assert.equal(await popup.locator("#ratingAdditional").textContent(), "31 条非好评评价");
+      assert.equal(await popup.locator("#ratingBaseTotal").textContent(), "1000");
+      assert.equal(await popup.locator("#ratingBasePositive").textContent(), "950");
+      assert.equal(await popup.locator("#ratingNonPositive").textContent(), "50");
+      assert.equal(await popup.locator("#ratingNewTotal").textContent(), "969");
+      assert.equal(await popup.locator("#ratingAfter").textContent(), "98.0392%");
+      assert.equal(await popup.locator("#ratingNewTotalLabel").textContent(), "删除后评价总数");
+      assert.equal(await popup.locator("#ratingAfterLabel").textContent(), "删除后好评率");
+      if (!pair[0] || !pair[1]) assert.match(await popup.locator("#ratingExplanation").textContent(), /估算/);
+      await popup.locator("#calculateRating").click();
+      assert.equal(await popup.locator("#ratingAdditional").textContent(), "1500 个好评");
+      assert.equal(await popup.locator("#ratingNewTotalLabel").textContent(), "新增后评价总数");
+    }
+    await fill("1000", "950", "", "100");
+    await popup.locator("#calculateRatingDelete").click();
+    assert.equal(await popup.locator("#ratingAdditional").textContent(), "50 条非好评评价");
+    assert.equal(await popup.locator("#ratingAfter").textContent(), "100%");
+    await fill("", "0", "0");
+    await popup.locator("#calculateRatingDelete").click();
+    assert.match(await popup.locator("#ratingNote").textContent(), /无法反推/);
+    assert.equal(await popup.locator("#ratingResult").isVisible(), false);
+    await fill("1000", "", "");
+    await popup.locator("#calculateRating").click();
+    assert.match(await popup.locator("#ratingNote").textContent(), /至少填写两项/);
+    await fill("100", "0", "");
+    await popup.locator("#calculateRatingDelete").click();
+    assert.equal(await popup.locator("#ratingAdditional").textContent(), "无法达到目标");
+    assert.match(await popup.locator("#ratingExplanation").textContent(), /当前没有好评/);
+    await fill("1000", "950", "");
+    await popup.locator("#calculateRatingDelete").click();
+    if (process.env.DELETE_RATING_SCREENSHOT) await popup.screenshot({ path: process.env.DELETE_RATING_SCREENSHOT });
+    assert.ok(await popup.locator(".panel").evaluate((node) => node.getBoundingClientRect().bottom <= 580));
+    await popup.close();
+    popup = await open("popup.html", true);
+    await popup.waitForFunction(() => document.getElementById("skuid-separator-extension-root").shadowRoot.querySelector("#ratingTotal").value === "1000");
+    await popup.locator('[data-tool="rating"]').click();
+    await popup.locator("#calculateRatingDelete").click();
+    assert.equal(await popup.locator("#ratingAdditional").textContent(), "31 条非好评评价");
+    await web.locator('[data-tool="rating"]').click();
+    for (const [id, value] of Object.entries({ ratingTotal: "1000", ratingPositive: "950", ratingTarget: "98" })) await web.locator(`#${id}`).fill(value);
+    await web.locator("#calculateRatingDelete").click();
+    assert.equal(await web.locator("#ratingAdditional").textContent(), "31 条非好评评价");
   });
   await t.test("a failed toggle save reports an error and preserves visibility", async () => {
     failWrites = true;

@@ -77,20 +77,21 @@
       </div>
       <div id="ratingTool" class="tool-body hidden">
         <div class="calc-grid">
-          <label class="calc-field" for="ratingTotal">当前评价数<input id="ratingTotal" type="number" min="0" step="1" inputmode="numeric" placeholder="例如：1000"></label>
+          <label class="calc-field" for="ratingTotal">当前评价数（可选）<input id="ratingTotal" type="number" min="0" step="1" inputmode="numeric" placeholder="例如：1000"></label>
           <label class="calc-field" for="ratingPositive">好评数（可选）<input id="ratingPositive" type="number" min="0" step="1" inputmode="numeric" placeholder="例如：950"></label>
           <label class="calc-field" for="ratingCurrent">当前好评率 (%)<input id="ratingCurrent" type="number" min="0" max="100" step="any" inputmode="decimal" placeholder="可选，例如：95"></label>
           <label class="calc-field" for="ratingTarget">目标好评率 (%)<input id="ratingTarget" type="number" min="0" max="100" step="any" inputmode="decimal" placeholder="例如：98"></label>
         </div>
-        <p class="calc-formula">好评数与当前好评率至少填一项；同时填写时，以好评数为准。百分比填 95 表示 95%。</p>
+        <p class="calc-formula">当前评价数、好评数、当前好评率任填两项，目标好评率必填。三项都填时优先采用两个数量。百分比填 95 表示 95%。</p>
         <button id="calculateRating" class="button primary calc-button" type="button">计算需要新增的好评数</button>
+        <button id="calculateRatingDelete" class="button secondary calc-button" type="button">计算需要删除的非好评评价数</button>
         <div id="ratingResult" class="profit-list hidden" aria-live="polite">
           <div class="profit-card"><span id="ratingResultLabel">最少需要新增</span><strong id="ratingAdditional">--</strong></div>
-          <div class="rating-details"><span>计算采用的当前好评率</span><b id="ratingActual">--</b><span>新增后评价总数</span><b id="ratingNewTotal">--</b><span>新增后好评率</span><b id="ratingAfter">--</b></div>
+          <div class="rating-details"><span>计算采用的当前评价数</span><b id="ratingBaseTotal">--</b><span>计算采用的好评数</span><b id="ratingBasePositive">--</b><span>当前非好评数</span><b id="ratingNonPositive">--</b><span>计算采用的当前好评率</span><b id="ratingActual">--</b><span id="ratingNewTotalLabel">新增后评价总数</span><b id="ratingNewTotal">--</b><span id="ratingAfterLabel">新增后好评率</span><b id="ratingAfter">--</b></div>
           <p id="ratingExplanation" class="calc-formula"></p>
         </div>
         <p id="ratingNote" class="calc-note" role="status"></p>
-        <p class="calc-formula">按新增评价全部为好评、原有评价不变计算。结果向上取整；百分比展示最多保留 4 位小数，判定是否达标使用未舍入数值。</p>
+        <p class="calc-formula">新增模式：新增评价全部为好评。删除模式：仅减少非好评，好评数不变。所需数量向上取整；由百分比推算的数量取最近整数并标为估算。百分比展示最多保留 4 位小数。</p>
       </div>
       <div id="spuTool" class="tool-body hidden">
         <label class="label" for="baseTableInput">上传商品底表（.xlsx）</label>
@@ -131,6 +132,7 @@
     spuTool: shadow.querySelector("#spuTool"),
     ratingTool: shadow.querySelector("#ratingTool"), ratingTotal: shadow.querySelector("#ratingTotal"), ratingPositive: shadow.querySelector("#ratingPositive"), ratingCurrent: shadow.querySelector("#ratingCurrent"), ratingTarget: shadow.querySelector("#ratingTarget"),
     calculateRating: shadow.querySelector("#calculateRating"), ratingResult: shadow.querySelector("#ratingResult"), ratingResultLabel: shadow.querySelector("#ratingResultLabel"), ratingAdditional: shadow.querySelector("#ratingAdditional"), ratingActual: shadow.querySelector("#ratingActual"), ratingNewTotal: shadow.querySelector("#ratingNewTotal"), ratingAfter: shadow.querySelector("#ratingAfter"), ratingExplanation: shadow.querySelector("#ratingExplanation"), ratingNote: shadow.querySelector("#ratingNote"),
+    calculateRatingDelete: shadow.querySelector("#calculateRatingDelete"), ratingBaseTotal: shadow.querySelector("#ratingBaseTotal"), ratingBasePositive: shadow.querySelector("#ratingBasePositive"), ratingNonPositive: shadow.querySelector("#ratingNonPositive"), ratingNewTotalLabel: shadow.querySelector("#ratingNewTotalLabel"), ratingAfterLabel: shadow.querySelector("#ratingAfterLabel"),
     purchasePrice: shadow.querySelector("#purchasePrice"), logisticsCost: shadow.querySelector("#logisticsCost"), cpsRate: shadow.querySelector("#cpsRate"), salePrice: shadow.querySelector("#salePrice"), mergeRate: shadow.querySelector("#mergeRate"),
     calculateProfit: shadow.querySelector("#calculateProfit"), singleOrderProfit: shadow.querySelector("#singleOrderProfit"), mergedProfit: shadow.querySelector("#mergedProfit"), calcNote: shadow.querySelector("#calcNote"),
     baseTableInput: shadow.querySelector("#baseTableInput"), clearBaseTable: shadow.querySelector("#clearBaseTable"), baseTableStatus: shadow.querySelector("#baseTableStatus"),
@@ -278,22 +280,28 @@
     total: elements.ratingTotal.value, positive: elements.ratingPositive.value,
     currentRate: elements.ratingCurrent.value, targetRate: elements.ratingTarget.value
   });
-  const calculateRating = () => {
+  const calculateRating = (mode = "add") => {
     elements.ratingResult.classList.add("hidden");
     elements.ratingNote.textContent = "";
     try {
-      const result = window.SkuidRating.calculate(ratingInputs());
-      elements.ratingResultLabel.textContent = result.estimated ? "预计最少需要新增" : "最少需要新增";
-      elements.ratingAdditional.textContent = result.status === "unreachable" ? "无法达到 100%" : `${result.additional} 个好评`;
+      const result = window.SkuidRating.calculate({ ...ratingInputs(), mode });
+      const deleting = mode === "delete";
+      elements.ratingResultLabel.textContent = `${result.estimated ? "预计" : ""}最少需要${deleting ? "删除" : "新增"}`;
+      elements.ratingAdditional.textContent = result.status === "unreachable" ? "无法达到目标" : `${result.amount}${deleting ? " 条非好评评价" : " 个好评"}`;
+      elements.ratingBaseTotal.textContent = result.beforeTotal;
+      elements.ratingBasePositive.textContent = result.positive;
+      elements.ratingNonPositive.textContent = result.nonPositive;
+      elements.ratingNewTotalLabel.textContent = deleting ? "删除后评价总数" : "新增后评价总数";
+      elements.ratingAfterLabel.textContent = deleting ? "删除后好评率" : "新增后好评率";
       elements.ratingActual.textContent = result.current;
       elements.ratingNewTotal.textContent = result.status === "unreachable" ? "--" : result.total;
       elements.ratingAfter.textContent = result.after || "--";
       const notes = [];
-      if (result.estimated) notes.push("仅按输入好评率估算；平台显示值可能经过四舍五入，填写准确好评数可得到精确结果。");
-      if (result.usedPositive) notes.push("已按好评数计算，输入的当前好评率仅作参考。");
-      if (result.status === "unreachable") notes.push("已有非好评时，有限数量的新增好评只能无限接近 100%，无法达到严格的 100%。");
-      else if (result.additional === "0") notes.push("当前已满足目标，无需新增好评。");
-      else notes.push("以上是达到目标所需的最少新增好评数。");
+      if (result.estimated) notes.push(`已根据输入好评率估算${result.inferred === "total" ? "当前评价数" : "好评数"}并取最近整数。平台比例可能经过舍入，填写准确的评价数和好评数可得到精确结果。`);
+      if (result.usedPositive) notes.push("已按好评数和当前评价数计算，输入的当前好评率仅作参考。");
+      if (result.status === "unreachable") notes.push(result.reason);
+      else if (result.amount === "0") notes.push(`当前已满足目标，无需${deleting ? "删除非好评评价" : "新增好评"}。`);
+      else notes.push(`以上是达到目标所需的最少${deleting ? "删除非好评评价数" : "新增好评数"}。`);
       elements.ratingExplanation.textContent = notes.join(" ");
       elements.ratingResult.classList.remove("hidden");
     } catch (error) {
@@ -610,7 +618,8 @@
   });
   elements.copyResult.addEventListener("click", () => copyText(elements.result.value));
   elements.calculateProfit.addEventListener("click", calculateProfit);
-  elements.calculateRating.addEventListener("click", calculateRating);
+  elements.calculateRating.addEventListener("click", () => calculateRating("add"));
+  elements.calculateRatingDelete.addEventListener("click", () => calculateRating("delete"));
   [elements.ratingTotal, elements.ratingPositive, elements.ratingCurrent, elements.ratingTarget].forEach((input) => {
     input.addEventListener("input", () => {
       elements.ratingResult.classList.add("hidden");

@@ -1,6 +1,8 @@
 # gpt-tools
 
-## SKUID 运营工具箱 1.1.12
+## SKUID 运营工具箱 1.1.13
+
+支持跨页连续使用：浮窗的打开状态、位置、当前工具，以及四个工具的输入和输出会在同一浏览器的网页间同步；刷新、新开页面和重新打开工具栏面板也可恢复。
 
 点击浏览器右上角扩展图标即可使用全部工具；弹出面板右上角的“显示悬浮窗”开关可统一隐藏或恢复网页中的香蕉按钮，设置自动保存。
 
@@ -12,7 +14,7 @@ SKUID 转换支持可选的“每 N 个分组”：结果横向分列，每列�
 
 “SPU信息匹配”支持将实际输入的 SKU 置顶，并以浅色分割线与其余 SKU 隔开。输入 SPU 时仍展示全部 SKU，无分割线。
 
-下载 `dist/skuid-separator-extension-v1.1.12.zip` 并解压，在 Chrome 的 `chrome://extensions/` 中启用开发者模式，点击“加载已解压的扩展程序”，选择包含 `manifest.json` 的目录。
+下载 `dist/skuid-separator-extension-v1.1.13.zip` 并解压，在 Chrome 的 `chrome://extensions/` 中启用开发者模式，点击“加载已解压的扩展程序”，选择包含 `manifest.json` 的目录。
 
 源文件位于 `skuid-separator-extension/`，插件运行时无需 Node.js 或 npm。
 

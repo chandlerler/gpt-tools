@@ -8,6 +8,7 @@
   const floatingVisibilityKey = "skuid-separator-floating-enabled";
   const isPopup = location.href === chrome.runtime.getURL("popup.html");
   const separatorMap = { comma: ",", space: " ", newline: "\n", link: "\n" };
+  let publishShared = () => {};
 
   if (document.getElementById(rootId)) return;
 
@@ -146,6 +147,7 @@
   const notify = (message, type = "") => {
     elements.note.textContent = message;
     elements.note.className = `note ${type}`;
+    publishShared("converter");
   };
   const saveSettings = () => {
     chrome.storage.local.set({ [storageKey]: {
@@ -187,17 +189,16 @@
     elements.copyResult.textContent = "复制结果";
   };
 
-  const renderGroups = (values, size, separator) => {
+  const renderGroupCards = (cards) => {
     const groups = [];
-    for (let index = 0; index < values.length; index += size) {
-      const items = values.slice(index, index + size);
+    for (const card of cards) {
       const groupNumber = groups.length + 1;
       const group = document.createElement("section");
       group.className = "result-group";
       const header = document.createElement("div");
       header.className = "group-header";
       const title = document.createElement("span");
-      title.textContent = `第 ${groupNumber} 组 · ${items.length} 个`;
+      title.textContent = card.title;
       const copy = document.createElement("button");
       copy.type = "button";
       copy.className = "group-copy";
@@ -208,7 +209,7 @@
       output.className = "group-output";
       output.readOnly = true;
       output.setAttribute("aria-label", `第 ${groupNumber} 组转换结果`);
-      output.value = items.join(separator);
+      output.value = card.text;
       copy.addEventListener("click", () => copyText(output.value));
       header.append(title, copy);
       group.append(header, output);
@@ -216,6 +217,14 @@
     }
     elements.groupedResult.replaceChildren(...groups);
     elements.groupedResult.scrollLeft = 0;
+  };
+  const renderGroups = (values, size, separator) => {
+    const cards = [];
+    for (let index = 0; index < values.length; index += size) {
+      const items = values.slice(index, index + size);
+      cards.push({ title: `第 ${cards.length + 1} 组 · ${items.length} 个`, text: items.join(separator) });
+    }
+    renderGroupCards(cards);
   };
 
   const convert = () => {
@@ -472,6 +481,7 @@
     if (!file) return;
     if (!/\.xlsx$/i.test(file.name)) {
       setBaseTableStatus("请上传 .xlsx 格式底表。", "error");
+      publishShared("spu");
       return;
     }
     try {
@@ -486,6 +496,8 @@
     } catch (error) {
       console.error("[SKUID 分隔转换器] 底表解析失败：", error);
       setBaseTableStatus(error.message || "底表解析失败，请检查文件格式。", "error");
+    } finally {
+      publishShared("spu");
     }
   };
 
@@ -493,6 +505,7 @@
     await chrome.storage.local.remove(baseTableStorageKey);
     baseTableData = null;
     showBaseTable(null);
+    publishShared("spu");
   };
 
   const switchTool = (tool) => {
@@ -578,12 +591,20 @@
       return;
     }
     elements.panel.classList.remove("hidden");
+    publishShared("open", true);
+    savePosition();
     fitFloatingPanel();
     const activeTool = elements.toolButtons.find((button) => button.classList.contains("active"))?.dataset.tool;
     ({ converter: elements.source, profit: elements.purchasePrice, spu: elements.spuQueryInput, rating: elements.ratingTotal }[activeTool] || elements.source).focus();
   });
-  elements.close.addEventListener("click", () => elements.panel.classList.add("hidden"));
-  elements.toolButtons.forEach((button) => button.addEventListener("click", () => switchTool(button.dataset.tool)));
+  elements.close.addEventListener("click", () => {
+    elements.panel.classList.add("hidden");
+    publishShared("open", false);
+  });
+  elements.toolButtons.forEach((button) => button.addEventListener("click", () => {
+    switchTool(button.dataset.tool);
+    publishShared("tool", button.dataset.tool);
+  }));
   const refreshConversion = () => {
     if (elements.source.value.trim() || elements.result.value) convert();
   };
@@ -651,6 +672,149 @@
     setPosition({ side: root.dataset.side, top: root.getBoundingClientRect().top });
   });
 
+  // Each tool has its own snapshot: editing one tool cannot overwrite the
+  // saved results of another. Restoration only renders data; it never copies
+  // to the clipboard, imports files, or writes another snapshot back.
+  const sharedPrefix = "skuid-separator-continuity-";
+  const sharedNames = ["open", "tool", "converter", "profit", "rating", "spu"];
+  const sharedClient = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+  const sharedPayloads = {};
+  const sharedSignatures = new Map();
+  const startupChanges = {};
+  const changeVersions = new Map();
+  let changeVersion = 0;
+  let sharedReady = false;
+  let restoringShared = false;
+  let panelOpen = false;
+  const inputIds = {
+    converter: ["source", "customSeparator", "groupSize"],
+    profit: ["purchasePrice", "logisticsCost", "cpsRate", "salePrice", "mergeRate"],
+    rating: ["ratingTotal", "ratingPositive", "ratingCurrent", "ratingTarget"],
+    spu: ["spuQueryInput", "spuBatchInput"]
+  };
+  const outputIds = {
+    profit: ["singleOrderProfit", "mergedProfit", "calcNote"],
+    rating: ["ratingResultLabel", "ratingAdditional", "ratingActual", "ratingNewTotal", "ratingAfter", "ratingExplanation", "ratingNote", "ratingBaseTotal", "ratingBasePositive", "ratingNonPositive", "ratingNewTotalLabel", "ratingAfterLabel"]
+  };
+  const readFields = (ids, property) => Object.fromEntries(ids.map((id) => [id, elements[id][property]]));
+  const writeFields = (ids, values, property) => {
+    for (const id of ids) {
+      if (typeof values?.[id] === "string" && elements[id][property] !== values[id]) elements[id][property] = values[id];
+    }
+  };
+  const tableVersion = (table = baseTableData) => table ? JSON.stringify([table.fileName, table.importedAt, table.skuCount, table.spuCount]) : null;
+  const groupCards = () => [...elements.groupedResult.children].map((card) => ({ title: card.querySelector(".group-header span").textContent, text: card.querySelector("textarea").value }));
+  const captureShared = (name) => {
+    const fields = readFields(inputIds[name], "value");
+    if (name === "converter") return {
+      fields, separator: selectedSeparator(), groupEnabled: elements.groupEnabled.checked,
+      result: elements.result.value, grouped: !elements.groupedResult.classList.contains("hidden"),
+      cards: groupCards(), note: elements.note.textContent, noteClass: elements.note.className
+    };
+    if (name === "profit" || name === "rating") return {
+      fields, outputs: readFields(outputIds[name], "textContent"),
+      visible: name === "rating" ? !elements.ratingResult.classList.contains("hidden") : true
+    };
+    return {
+      fields, tableVersion: tableVersion(), note: elements.spuNote.textContent,
+      status: elements.baseTableStatus.textContent, statusClass: elements.baseTableStatus.className,
+      view: !elements.spuResult.classList.contains("hidden") ? "detail" : !elements.spuBatchResult.classList.contains("hidden") ? "batch" : "none",
+      detailSkuId: lastSkuIds[0] || null, highlight: !!elements.spuRows.querySelector(".spu-divider"),
+      links: [...elements.spuBatchLinks.children].map((link) => link.href)
+    };
+  };
+  const applyPanelOpen = () => {
+    if (!isPopup) elements.panel.classList.toggle("hidden", !panelOpen || !floatingEnabled);
+    fitFloatingPanel();
+  };
+  const restoreShared = (name, data) => {
+    if (name === "open") {
+      panelOpen = data === true;
+      applyPanelOpen();
+      return;
+    }
+    if (name === "tool") {
+      if (["converter", "profit", "rating", "spu"].includes(data)) switchTool(data);
+      return;
+    }
+    if (!data || typeof data !== "object") return;
+    writeFields(inputIds[name], data.fields, "value");
+    if (name === "converter") {
+      const choice = elements.separators.find((option) => option.value === data.separator);
+      if (choice) choice.checked = true;
+      elements.groupEnabled.checked = data.groupEnabled === true;
+      elements.groupSize.disabled = !elements.groupEnabled.checked;
+      elements.customSeparator.disabled = selectedSeparator() !== "custom";
+      elements.result.value = data.result || "";
+      if (Array.isArray(data.cards) && JSON.stringify(groupCards()) !== JSON.stringify(data.cards)) renderGroupCards(data.cards);
+      elements.result.classList.toggle("hidden", data.grouped === true);
+      elements.groupedResult.classList.toggle("hidden", data.grouped !== true);
+      elements.copyResult.textContent = data.grouped ? "复制全部" : "复制结果";
+      elements.note.textContent = data.note || "";
+      elements.note.className = data.noteClass || "note";
+    } else if (name === "profit" || name === "rating") {
+      writeFields(outputIds[name], data.outputs, "textContent");
+      if (name === "rating") elements.ratingResult.classList.toggle("hidden", data.visible !== true);
+    } else {
+      resetSpuResult();
+      elements.spuBatchResult.classList.add("hidden");
+      elements.spuBatchLinks.replaceChildren();
+      if (data.tableVersion !== tableVersion()) return;
+      elements.baseTableStatus.textContent = data.status || elements.baseTableStatus.textContent;
+      elements.baseTableStatus.className = data.statusClass || "note";
+      const skuIndex = baseTableData?.skuIndex[data.detailSkuId];
+      if (data.view === "detail" && skuIndex !== undefined) {
+        showSpuResult(baseTableData, baseTableData.skus[skuIndex], data.highlight ? data.detailSkuId : null);
+      } else if (data.view === "batch" && Array.isArray(data.links)) {
+        const links = data.links.filter((url) => typeof url === "string" && /^https:\/\/item\.jd\.com\/[^/?#]+\.html$/.test(url));
+        elements.spuBatchLinks.replaceChildren(...links.map((url) => {
+          const link = document.createElement("a");
+          link.href = url; link.textContent = url; link.target = "_blank"; link.rel = "noopener noreferrer";
+          return link;
+        }));
+        elements.spuBatchResult.classList.toggle("hidden", !links.length);
+      }
+      elements.spuNote.textContent = data.note || "";
+    }
+    fitFloatingPanel();
+  };
+  const receiveShared = (name, payload) => {
+    if (!payload || payload.version !== 1 || payload.client === sharedClient) return;
+    const signature = JSON.stringify(payload.data);
+    sharedPayloads[name] = payload;
+    if (sharedSignatures.get(name) === signature) return;
+    sharedSignatures.set(name, signature);
+    restoringShared = true;
+    try { restoreShared(name, payload.data); } finally { restoringShared = false; }
+  };
+  publishShared = (name, value) => {
+    if (!sharedReady || restoringShared) return;
+    const data = value === undefined ? captureShared(name) : value;
+    const signature = JSON.stringify(data);
+    if (sharedSignatures.get(name) === signature) return;
+    const payload = { version: 1, client: sharedClient, data };
+    sharedPayloads[name] = payload;
+    sharedSignatures.set(name, signature);
+    if (name === "open") panelOpen = data === true;
+    chrome.storage.local.set({ [sharedPrefix + name]: payload }).then(() => {
+      if (elements.floatingSettingError.textContent === "跨页状态保存失败，请重试当前操作。") {
+        elements.floatingSettingError.classList.add("hidden");
+        elements.floatingSettingError.textContent = "";
+      }
+    }).catch(() => {
+      if (sharedSignatures.get(name) === signature) sharedSignatures.delete(name);
+      elements.floatingSettingError.textContent = "跨页状态保存失败，请重试当前操作。";
+      elements.floatingSettingError.classList.remove("hidden");
+    });
+  };
+  for (const eventName of ["input", "change", "click", "keydown"]) {
+    shadow.addEventListener(eventName, (event) => {
+      if (eventName === "keydown" && event.key !== "Enter") return;
+      const tool = event.target.closest?.(".tool-body")?.id.replace(/Tool$/, "");
+      if (inputIds[tool] && event.target.type !== "file") publishShared(tool);
+    });
+  }
+
   let floatingEnabled = true;
   const applyFloatingVisibility = (value) => {
     floatingEnabled = value !== false;
@@ -658,6 +822,7 @@
     if (!isPopup) {
       root.style.display = floatingEnabled ? "block" : "none";
       if (!floatingEnabled) elements.panel.classList.add("hidden");
+      else applyPanelOpen();
     }
   };
   if (isPopup) {
@@ -670,6 +835,7 @@
     elements.floatingSettingError.classList.add("hidden");
     try {
       await chrome.storage.local.set({ [floatingVisibilityKey]: enabled });
+      if (!enabled) publishShared("open", false);
       applyFloatingVisibility(enabled);
     } catch {
       elements.floatingEnabled.checked = floatingEnabled;
@@ -679,9 +845,10 @@
       elements.floatingEnabled.disabled = false;
     }
   });
-  chrome.storage.onChanged.addListener((changes, area) => {
-    if (area !== "local") return;
+  const applyRuntimeChanges = (changes) => {
     if (changes[floatingVisibilityKey]) applyFloatingVisibility(changes[floatingVisibilityKey].newValue);
+    const position = changes[positionStorageKey]?.newValue;
+    if (position && (position.side === "left" || position.side === "right") && Number.isFinite(position.top)) setPosition(position);
     if (changes[baseTableStorageKey]) {
       baseTableData = changes[baseTableStorageKey].newValue || null;
       showBaseTable(baseTableData);
@@ -689,8 +856,41 @@
       elements.spuBatchResult.classList.add("hidden");
       elements.spuBatchLinks.replaceChildren();
     }
+    for (const name of sharedNames) {
+      if (changes[sharedPrefix + name]) receiveShared(name, changes[sharedPrefix + name].newValue);
+    }
+    if (changes[baseTableStorageKey] && sharedPayloads.spu) restoreShared("spu", sharedPayloads.spu.data);
+  };
+  chrome.storage.onChanged.addListener((changes, area) => {
+    if (area !== "local") return;
+    for (const [key, change] of Object.entries(changes)) {
+      startupChanges[key] = change.newValue;
+      changeVersions.set(key, ++changeVersion);
+    }
+    if (sharedReady) applyRuntimeChanges(changes);
   });
-  chrome.storage.local.get([storageKey, calculatorStorageKey, ratingStorageKey, positionStorageKey, baseTableStorageKey, floatingVisibilityKey], (stored) => {
+  const refreshShared = () => {
+    if (!sharedReady) return;
+    const started = changeVersion;
+    const keys = [floatingVisibilityKey, positionStorageKey, baseTableStorageKey, ...sharedNames.map((name) => sharedPrefix + name)];
+    chrome.storage.local.get(keys, (stored) => {
+      const changes = {};
+      for (const key of keys) {
+        const value = (changeVersions.get(key) || 0) > started ? startupChanges[key] : stored[key];
+        if (key === baseTableStorageKey && tableVersion(value || null) === tableVersion()) continue;
+        changes[key] = { newValue: value };
+      }
+      applyRuntimeChanges(changes);
+    });
+  };
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "visible") refreshShared();
+  });
+  window.addEventListener("pageshow", (event) => {
+    if (event.persisted) refreshShared();
+  });
+  chrome.storage.local.get([storageKey, calculatorStorageKey, ratingStorageKey, positionStorageKey, baseTableStorageKey, floatingVisibilityKey, ...sharedNames.map((name) => sharedPrefix + name)], (stored) => {
+    stored = { ...stored, ...startupChanges };
     applyFloatingVisibility(stored[floatingVisibilityKey]);
     const settings = stored[storageKey];
     if (settings) {
@@ -700,7 +900,7 @@
       elements.groupEnabled.checked = settings.groupEnabled === true;
       elements.groupSize.value = settings.groupSize ?? "50";
       elements.groupSize.disabled = !elements.groupEnabled.checked;
-      updateCustomInput();
+      elements.customSeparator.disabled = selectedSeparator() !== "custom";
     }
     const position = stored[positionStorageKey];
     if (position && (position.side === "left" || position.side === "right") && Number.isFinite(position.top)) {
@@ -725,6 +925,13 @@
       baseTableData = stored[baseTableStorageKey];
       showBaseTable(baseTableData);
     }
+    for (const name of sharedNames) receiveShared(name, stored[sharedPrefix + name]);
+    sharedReady = true;
+    if (isPopup) {
+      if (!stored[positionStorageKey]) chrome.storage.local.set({ [positionStorageKey]: { side: "right", top: 120 } });
+      if (floatingEnabled) publishShared("open", true);
+    }
+    applyPanelOpen();
   });
 })();
 
